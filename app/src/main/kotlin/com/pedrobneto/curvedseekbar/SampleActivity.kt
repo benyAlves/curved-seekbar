@@ -13,14 +13,14 @@ class SampleActivity : AppCompatActivity() {
 
     private lateinit var seekBar: CurvedSeekBar
 
-    private val preferredPointBySegment = mapOf(0 to 2, 1 to 8, 2 to 11)
+    private val preferredPointBySegment = mapOf(0 to 1, 1 to 2, 2 to 5)
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val totalPoints = 0
+        val totalPoints = 6
 
         val topTextView = findViewById<TextView>(R.id.top_text_view)
         val bottomTextView = findViewById<TextView>(R.id.bottom_text_view)
@@ -33,8 +33,11 @@ class SampleActivity : AppCompatActivity() {
 
         if (totalPoints > 0) {
             seekBar.pointQuantity = totalPoints
-            seekBar.segmentQuantity = 5
+            seekBar.segmentQuantity = 3
             seekBar.setPreferredPointOnClickBySegment(preferredPointBySegment)
+            seekBar.setOnPointSelectedStopUpdating {
+                Toast.makeText(this, "Last point: ${it + 1}", Toast.LENGTH_SHORT).show()
+            }
         } else {
             seekBar.setOnProgressUpdatedListener { bottomTextView.text = "Progress: ${it * 100}%" }
             seekBar.setOnProgressStopChangingListener {

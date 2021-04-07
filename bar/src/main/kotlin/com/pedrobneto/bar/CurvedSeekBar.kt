@@ -1,12 +1,7 @@
 package com.pedrobneto.bar
 
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.Shader
+import android.graphics.*
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
@@ -226,12 +221,6 @@ class CurvedSeekBar : FrameLayout {
      * Will not be set if the current selected point is equal to the last one.
      */
     private var lastPointSelected: Int = 0
-        set(value) {
-            if (value != field && value > 0 && value <= pointQuantity) {
-                field = value
-                onPointSelectedUpdated?.invoke(value - 1)
-            }
-        }
 
     /**
      * Map used to select the preferred point when the corresponding segment is clicked.
@@ -540,10 +529,7 @@ class CurvedSeekBar : FrameLayout {
                     preferredPointBySegment[index]?.run(::setSelectedPoint)
                 } else {
                     val newX = it.x + handlerMarginStart + (it.measuredWidth / 2)
-                    adjustHandlerPosition(newX, animationsEnabled) {
-                        lastSegmentSelected = index
-                        onSegmentSelected?.invoke(index)
-                    }
+                    adjustHandlerPosition(newX, animationsEnabled)
                 }
             }
 
@@ -617,10 +603,22 @@ class CurvedSeekBar : FrameLayout {
      * @param onEnd Callback that will be executed after the handler's position has changed.
      */
     private fun adjustHandlerPosition(newX: Float, animated: Boolean, onEnd: () -> Unit = {}) {
-        val x = when {
+        var x = when {
             newX > maxAchievableX -> maxAchievableX
             newX < minAchievableX -> minAchievableX
             else -> newX
+        }
+
+        if (pointQuantity > 0) {
+            val diffToFloorPoint = x % xPerPoint
+            val diffToCeilPoint = (x - diffToFloorPoint + xPerPoint) - x
+            if (diffToFloorPoint < diffToCeilPoint) {
+                x -= diffToFloorPoint
+            } else {
+                x += diffToCeilPoint
+            }
+
+            if (x > maxAchievableX) x -= xPerPoint else if (x < minAchievableX) x += xPerPoint
         }
 
         if (animated) {
@@ -668,6 +666,7 @@ class CurvedSeekBar : FrameLayout {
             if (isSelected) {
                 hasSegmentSelected = true
                 lastSegmentSelected = index
+                onSegmentSelected?.invoke(index)
                 newAlpha = 1f
             }
 
@@ -711,6 +710,19 @@ class CurvedSeekBar : FrameLayout {
     }
 
     /**
+     * Method to update the last point selected.
+     * Will only set if it isn't the same as the previous.
+     */
+    private fun setLastPointSelected(newPoint: Int): Boolean {
+        if (newPoint != lastPointSelected && newPoint < pointQuantity) {
+            lastPointSelected = newPoint
+            onPointSelectedUpdated?.invoke(lastPointSelected)
+            return true
+        }
+        return false
+    }
+
+    /**
      * Method that will update the last selected point
      * based on the handler's current position on the curve and notify if there are any
      * registered listeners.
@@ -732,33 +744,28 @@ class CurvedSeekBar : FrameLayout {
             return
         }
 
-        var point = ((handlerView.x - minAchievableX) / xPerPoint).roundToInt()
         if (adjustX) {
-            val newX: Float = when (pointQuantity) {
-                segmentQuantity -> {
+            val newX: Float =
+                if (pointQuantity == segmentQuantity) {
                     val selectedSegment = segments.find(View::isSelected) ?: return
                     selectedSegment.x + (selectedSegment.measuredWidth / 2) + handlerMarginStart
+                } else {
+                    handlerView.x
                 }
-                else -> {
-                    val floorPoint = handlerView.x - (handlerView.x % xPerPoint)
-                    val ceilPoint = floorPoint + xPerPoint
-
-                    if (handlerView.x - floorPoint < ceilPoint - handlerView.x) floorPoint
-                    else ceilPoint
-                }
-            }
 
             adjustHandlerPosition(newX, animationsEnabled) {
-                if (pointQuantity == segmentQuantity) {
-                    point = segments.indexOfFirst(View::isSelected) + 1
-                }
+                val point =
+                    if (pointQuantity == segmentQuantity) {
+                        segments.indexOfFirst(View::isSelected) + 1
+                    } else {
+                        (effectiveProgress * pointQuantity).roundToInt()
+                    }
 
-                lastPointSelected = point
-                onEnd()
+                if (setLastPointSelected(point)) onEnd()
             }
         } else {
-            lastPointSelected = point
-            onEnd()
+            val point = (effectiveProgress * pointQuantity).roundToInt()
+            if (setLastPointSelected(point)) onEnd()
         }
     }
 
@@ -847,9 +854,7 @@ class CurvedSeekBar : FrameLayout {
      * @param onPointSelectedStopUpdating A function receiving the point selected and returning Unit.
      */
     fun setOnPointSelectedStopUpdating(onPointSelectedStopUpdating: PointSelectionListener) {
-        this.onPointSelectedStopUpdating = {
-            if (it in 1..pointQuantity) onPointSelectedStopUpdating(it - 1)
-        }
+        this.onPointSelectedStopUpdating = onPointSelectedStopUpdating
     }
 
     /**
