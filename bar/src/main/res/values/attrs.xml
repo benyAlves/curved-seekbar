@@ -30,6 +30,7 @@
         <!--endregion-->
 
         <!--region Highlight-->
+        <attr name="highlightEnabled" format="boolean" />
         <attr name="minHighlightAlpha" format="float" />
         <attr name="maxHighlightAlpha" format="float" />
         <attr name="highlightColor" format="color" />

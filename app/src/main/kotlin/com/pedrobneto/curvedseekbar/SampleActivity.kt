@@ -30,6 +30,7 @@ class SampleActivity : AppCompatActivity() {
 
         seekBar = findViewById(R.id.seek_bar)
         seekBar.setOnPointSelectedUpdated { bottomTextView.text = "Selected point: ${it + 1}" }
+        seekBar.highlightEnabled = false
 
         if (totalPoints > 0) {
             seekBar.pointQuantity = totalPoints

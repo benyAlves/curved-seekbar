@@ -298,6 +298,11 @@ class CurvedSeekBar : FrameLayout {
      * Flag to determine whether or not we are animating the view's changes
      */
     var animationsEnabled = true
+
+    /**
+     * Flag to determine whether or not we are drawing the highlight for the progress
+     */
+    var highlightEnabled = true
     //endregion
 
     //region Progress
@@ -438,6 +443,8 @@ class CurvedSeekBar : FrameLayout {
                 defStyleAttr,
                 defStyleRes
             )
+
+        highlightEnabled = typedArray.getBoolean(R.styleable.CurvedSeekBar_highlightEnabled, true)
 
         handlerMarginStart = typedArray.getDimension(
             R.styleable.CurvedSeekBar_handlerSize,
@@ -906,25 +913,24 @@ class CurvedSeekBar : FrameLayout {
 
             val yTo = initialY + (lineStrokeSize / 2)
 
+            val finalHighlightColor = ColorUtils.setAlphaComponent(
+                highlightColor,
+                (minHighlightAlpha * 255).roundToInt()
+            )
+
             while (x <= finalX) {
                 progress = x / finalX
 
                 val y = getYForX(x)
                 linePath.lineTo(x, y)
 
-                if (progress <= handlerProgressOnLine) {
+                if (highlightEnabled && progress <= handlerProgressOnLine) {
                     val actualProgress = 1f - (y / yTo)
 
-                    val initialHighlightColor =
-                        ColorUtils.setAlphaComponent(
-                            highlightColor,
-                            (maxHighlightAlpha * 255 * actualProgress).roundToInt()
-                        )
-                    val finalHighlightColor =
-                        ColorUtils.setAlphaComponent(
-                            highlightColor,
-                            (minHighlightAlpha * 255).roundToInt()
-                        )
+                    val initialHighlightColor = ColorUtils.setAlphaComponent(
+                        highlightColor,
+                        (maxHighlightAlpha * 255 * actualProgress).roundToInt()
+                    )
 
                     highlightPaint.shader = LinearGradient(
                         x,
