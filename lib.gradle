@@ -5,6 +5,6 @@ ext.application = [
         targetSdk  : 30,
 
         //Release
-        versionCode: 4,
-        versionName: '1.0.2-alpha02'
+        versionCode: 5,
+        versionName: '1.0.2-alpha03'
 ]
