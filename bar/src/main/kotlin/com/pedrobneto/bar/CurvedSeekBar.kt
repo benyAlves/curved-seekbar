@@ -908,7 +908,7 @@ class CurvedSeekBar : FrameLayout {
 
             linePaint.style = Paint.Style.STROKE
 
-            highlightPaint.style = Paint.Style.STROKE
+            highlightPaint.style = Paint.Style.FILL
             highlightPaint.strokeWidth =
                 resources.getDimension(R.dimen.default_highlight_stroke_size)
         }
@@ -919,19 +919,38 @@ class CurvedSeekBar : FrameLayout {
         }
 
         private fun Canvas.drawBar() {
+            val yTo = initialY + (lineStrokeSize / 2)
+
             highlightPaint.color = highlightColor
             linePaint.color = barColor
             linePaint.strokeWidth = lineStrokeSize
 
+            highlightPath.rewind()
+            highlightPath.moveTo(initialX, yTo)
             linePath.rewind()
             linePath.moveTo(initialX, initialY)
 
             var x = 0f
             var progress: Float
-
             val handlerProgressOnLine = (handlerView.x + handlerView.measuredWidth / 2) / finalX
 
-            val yTo = initialY + (lineStrokeSize / 2)
+            var lastXWasInsideHighlight = true
+            val lastY = getYForX(handlerCenterX)
+            val actualProgress = 1f - (lastY / yTo)
+            val initialHighlightColor = ColorUtils.setAlphaComponent(
+                highlightColor,
+                (maxHighlightAlpha * 255 * actualProgress).roundToInt()
+            )
+
+            highlightPaint.shader = LinearGradient(
+                x,
+                lastY,
+                x,
+                yTo,
+                initialHighlightColor,
+                finalHighlightColor,
+                Shader.TileMode.CLAMP
+            )
 
             while (x <= finalX) {
                 progress = x / finalX
@@ -940,27 +959,12 @@ class CurvedSeekBar : FrameLayout {
                 linePath.lineTo(x, y)
 
                 if (highlightEnabled && progress <= handlerProgressOnLine) {
-                    val actualProgress = 1f - (y / yTo)
-
-                    val initialHighlightColor = ColorUtils.setAlphaComponent(
-                        highlightColor,
-                        (maxHighlightAlpha * 255 * actualProgress).roundToInt()
-                    )
-
-                    highlightPaint.shader = LinearGradient(
-                        x,
-                        y,
-                        x,
-                        yTo,
-                        initialHighlightColor,
-                        finalHighlightColor,
-                        Shader.TileMode.CLAMP
-                    )
-
-                    highlightPath.rewind()
-                    highlightPath.moveTo(x, y)
+                    highlightPath.lineTo(x, y)
+                } else if (lastXWasInsideHighlight) {
                     highlightPath.lineTo(x, yTo)
-                    drawPath(highlightPath, highlightPaint)
+                    highlightPath.lineTo(initialX, yTo)
+
+                    lastXWasInsideHighlight = false
                 }
 
                 x += 1f
@@ -968,6 +972,7 @@ class CurvedSeekBar : FrameLayout {
 
             linePath.lineTo(finalX, getYForX(finalX))
             drawPath(linePath, linePaint)
+            drawPath(highlightPath, highlightPaint)
         }
     }
 }
