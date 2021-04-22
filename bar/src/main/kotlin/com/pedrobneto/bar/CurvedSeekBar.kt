@@ -245,6 +245,10 @@ class CurvedSeekBar : FrameLayout {
      * Index of the last segment selected.
      */
     private var lastSegmentSelected: Int = 0
+        set(value) {
+            if (value != field) onSegmentSelected?.invoke(value)
+            field = value
+        }
 
     /**
      * List of segment views.
@@ -303,6 +307,11 @@ class CurvedSeekBar : FrameLayout {
      * Flag to determine whether or not we are drawing the highlight for the progress
      */
     var highlightEnabled = true
+
+    /**
+     * Flag to determine whether or not the user is dragging the handler
+     */
+    var isDraggingHandler = false
     //endregion
 
     //region Progress
@@ -322,6 +331,7 @@ class CurvedSeekBar : FrameLayout {
     private var effectiveProgress: Float = 0f
         set(value) {
             field = value
+            isDraggingHandler = true
             onProgressUpdated?.invoke(value)
 
             if (isLaidOut) {
@@ -578,6 +588,7 @@ class CurvedSeekBar : FrameLayout {
             .setOnDragListener { effectiveProgress = it.progress }
             .setOnEndDraggingListener {
                 updatePointSelected(true) {
+                    isDraggingHandler = false
                     onPointSelectedStopUpdating?.invoke(lastPointSelected)
                     onProgressStopChanging?.invoke(effectiveProgress)
                 }
@@ -633,8 +644,9 @@ class CurvedSeekBar : FrameLayout {
             handlerViewAnimator.duration = ANIMATION_DURATION
             handlerViewAnimator.setUpdateListener { effectiveProgress = handlerView.progress }
             handlerViewAnimator.withEndAction {
-                onProgressStopChanging?.invoke(effectiveProgress)
+                isDraggingHandler = false
                 onPointSelectedStopUpdating?.invoke(lastPointSelected)
+                onProgressStopChanging?.invoke(effectiveProgress)
                 onEnd()
             }
 
@@ -642,8 +654,9 @@ class CurvedSeekBar : FrameLayout {
         } else {
             handlerView.x = x
             effectiveProgress = handlerView.progress
-            onProgressStopChanging?.invoke(effectiveProgress)
+            isDraggingHandler = false
             onPointSelectedStopUpdating?.invoke(lastPointSelected)
+            onProgressStopChanging?.invoke(effectiveProgress)
             onEnd()
         }
     }
@@ -673,7 +686,6 @@ class CurvedSeekBar : FrameLayout {
             if (isSelected) {
                 hasSegmentSelected = true
                 lastSegmentSelected = index
-                onSegmentSelected?.invoke(index)
                 newAlpha = 1f
             }
 
@@ -877,11 +889,28 @@ class CurvedSeekBar : FrameLayout {
      * Layer that will be used to draw the line and highlight (if chosen).
      */
     private inner class GraphView(context: Context) : View(context) {
+        private val linePaint = Paint()
+        private val highlightPaint = Paint()
+
+        private val linePath = Path()
+        private val highlightPath = Path()
+
+        private val finalHighlightColor: Int
+            get() = ColorUtils.setAlphaComponent(
+                highlightColor,
+                (minHighlightAlpha * 255).roundToInt()
+            )
 
         init {
             clipChildren = false
             clipToPadding = false
             setBackgroundColor(Color.TRANSPARENT)
+
+            linePaint.style = Paint.Style.STROKE
+
+            highlightPaint.style = Paint.Style.STROKE
+            highlightPaint.strokeWidth =
+                resources.getDimension(R.dimen.default_highlight_stroke_size)
         }
 
         override fun onDraw(canvas: Canvas?) {
@@ -890,19 +919,10 @@ class CurvedSeekBar : FrameLayout {
         }
 
         private fun Canvas.drawBar() {
-            val highlightStrokeSize = resources.getDimension(R.dimen.default_highlight_stroke_size)
-
-            val linePaint = Paint()
+            highlightPaint.color = highlightColor
             linePaint.color = barColor
-            linePaint.style = Paint.Style.STROKE
             linePaint.strokeWidth = lineStrokeSize
 
-            val highlightPaint = Paint()
-            highlightPaint.color = barColor
-            highlightPaint.style = Paint.Style.STROKE
-            highlightPaint.strokeWidth = highlightStrokeSize
-
-            val linePath = Path()
             linePath.rewind()
             linePath.moveTo(initialX, initialY)
 
@@ -912,11 +932,6 @@ class CurvedSeekBar : FrameLayout {
             val handlerProgressOnLine = (handlerView.x + handlerView.measuredWidth / 2) / finalX
 
             val yTo = initialY + (lineStrokeSize / 2)
-
-            val finalHighlightColor = ColorUtils.setAlphaComponent(
-                highlightColor,
-                (minHighlightAlpha * 255).roundToInt()
-            )
 
             while (x <= finalX) {
                 progress = x / finalX
@@ -942,7 +957,7 @@ class CurvedSeekBar : FrameLayout {
                         Shader.TileMode.CLAMP
                     )
 
-                    val highlightPath = Path()
+                    highlightPath.rewind()
                     highlightPath.moveTo(x, y)
                     highlightPath.lineTo(x, yTo)
                     drawPath(highlightPath, highlightPaint)

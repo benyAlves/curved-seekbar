@@ -23,24 +23,26 @@ class SampleActivity : AppCompatActivity() {
         val totalPoints = 6
 
         val topTextView = findViewById<TextView>(R.id.top_text_view)
+        val middleTextView = findViewById<TextView>(R.id.middle_text_view)
         val bottomTextView = findViewById<TextView>(R.id.bottom_text_view)
         topTextView.isVisible = totalPoints > 0
 
         topTextView.text = "Points: $totalPoints"
 
         seekBar = findViewById(R.id.seek_bar)
-        seekBar.setOnPointSelectedUpdated { bottomTextView.text = "Selected point: ${it + 1}" }
-        seekBar.highlightEnabled = false
+        seekBar.setOnPointSelectedUpdated { middleTextView.text = "Selected point: ${it + 1}" }
+        seekBar.highlightEnabled = true
 
         if (totalPoints > 0) {
             seekBar.pointQuantity = totalPoints
             seekBar.segmentQuantity = 3
+            seekBar.setOnSegmentSelectedListener { bottomTextView.text = "Selected segment: $it" }
             seekBar.setPreferredPointOnClickBySegment(preferredPointBySegment)
             seekBar.setOnPointSelectedStopUpdating {
                 Toast.makeText(this, "Last point: ${it + 1}", Toast.LENGTH_SHORT).show()
             }
         } else {
-            seekBar.setOnProgressUpdatedListener { bottomTextView.text = "Progress: ${it * 100}%" }
+            seekBar.setOnProgressUpdatedListener { middleTextView.text = "Progress: ${it * 100}%" }
             seekBar.setOnProgressStopChangingListener {
                 Toast.makeText(this, "Progress: ${it * 100}%", Toast.LENGTH_SHORT).show()
             }

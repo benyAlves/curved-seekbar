@@ -44,13 +44,24 @@
         tools:text="Points: 5" />
 
     <TextView
+        android:id="@+id/middle_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center_horizontal"
+        android:text="Selected point: 1"
+        android:textColor="@color/white"
+        android:textSize="24sp"
+        tools:ignore="HardcodedText" />
+
+    <TextView
         android:id="@+id/bottom_text_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="32dp"
         android:gravity="center_horizontal"
-        android:text="Selected point: 1"
+        android:text="Selected segment: 1"
         android:textColor="@color/white"
         android:textSize="24sp"
         tools:ignore="HardcodedText" />
