@@ -20,7 +20,7 @@ class SampleActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val totalPoints = 6
+        val totalPoints = 240
 
         val topTextView = findViewById<TextView>(R.id.top_text_view)
         val middleTextView = findViewById<TextView>(R.id.middle_text_view)
@@ -36,7 +36,7 @@ class SampleActivity : AppCompatActivity() {
         if (totalPoints > 0) {
             seekBar.pointQuantity = totalPoints
             seekBar.segmentQuantity = 3
-            seekBar.setOnSegmentSelectedListener { bottomTextView.text = "Selected segment: $it" }
+            seekBar.setOnSegmentSelectedListener { bottomTextView.text = "Selected segment: ${it + 1}" }
             seekBar.setPreferredPointOnClickBySegment(preferredPointBySegment)
             seekBar.setOnPointSelectedStopUpdating {
                 Toast.makeText(this, "Last point: ${it + 1}", Toast.LENGTH_SHORT).show()

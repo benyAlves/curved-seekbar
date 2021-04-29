@@ -216,10 +216,20 @@ class CurvedSeekBar : FrameLayout {
     var pointQuantity: Int = 0
 
     /**
+     * Property used to calculate the current point from the x coordinate.
+     */
+    private val currentPoint: Int
+        get() = if (pointQuantity == segmentQuantity) {
+            segments.indexOfFirst(View::isSelected)
+        } else {
+            ((handlerView.x - minAchievableX) / xPerPoint).roundToInt()
+        }
+
+    /**
      * Property used to calculate the required value of the x coordinate to achieve another point.
      */
     private val xPerPoint: Float
-        get() = (maxAchievableX - minAchievableX) / pointQuantity
+        get() = (maxAchievableX - minAchievableX) / (pointQuantity - 1)
 
     /**
      * Last point selected.
@@ -595,13 +605,7 @@ class CurvedSeekBar : FrameLayout {
             .setMarginStart(handlerMarginStart)
             .setMarginEnd(handlerMarginEnd)
             .setOnDragListener { effectiveProgress = it.progress }
-            .setOnEndDraggingListener {
-                updatePointSelected(true) {
-                    isDraggingHandler = false
-                    onPointSelectedStopUpdating?.invoke(lastPointSelected)
-                    onProgressStopChanging?.invoke(effectiveProgress)
-                }
-            }
+            .setOnEndDraggingListener { updatePointSelected(true) }
 
         handlerView.setOnTouchListener(onDrag)
     }
@@ -627,25 +631,38 @@ class CurvedSeekBar : FrameLayout {
      * @see animationsEnabled
      *
      * @param newX The new x coordinate which the handler will be moved to.
+     * @param animated Whether or not we are animating the position translation.
      * @param onEnd Callback that will be executed after the handler's position has changed.
      */
     private fun adjustHandlerPosition(newX: Float, animated: Boolean, onEnd: () -> Unit = {}) {
         var x = when {
+            pointQuantity == segmentQuantity -> {
+                val selectedSegment = segments.find(View::isSelected) ?: return
+                selectedSegment.x + (selectedSegment.measuredWidth / 2) + handlerMarginStart
+            }
             newX > maxAchievableX -> maxAchievableX
             newX < minAchievableX -> minAchievableX
             else -> newX
         }
 
-        if (pointQuantity > 0) {
-            val diffToFloorPoint = x % xPerPoint
-            val diffToCeilPoint = (x - diffToFloorPoint + xPerPoint) - x
+        if (pointQuantity > 0 && pointQuantity != segmentQuantity) {
+            var virtualX = x - minAchievableX
+
+            val diffToFloorPoint = virtualX % xPerPoint
+            val diffToCeilPoint = xPerPoint - diffToFloorPoint
             if (diffToFloorPoint < diffToCeilPoint) {
-                x -= diffToFloorPoint
+                virtualX -= diffToFloorPoint
             } else {
-                x += diffToCeilPoint
+                virtualX += diffToCeilPoint
             }
 
-            if (x > maxAchievableX) x -= xPerPoint else if (x < minAchievableX) x += xPerPoint
+            virtualX += minAchievableX
+
+            x = when {
+                virtualX > maxAchievableX -> maxAchievableX
+                virtualX < minAchievableX -> minAchievableX
+                else -> virtualX
+            }
         }
 
         if (animated) {
@@ -773,27 +790,15 @@ class CurvedSeekBar : FrameLayout {
         }
 
         if (adjustX) {
-            val newX: Float =
-                if (pointQuantity == segmentQuantity) {
-                    val selectedSegment = segments.find(View::isSelected) ?: return
-                    selectedSegment.x + (selectedSegment.measuredWidth / 2) + handlerMarginStart
-                } else {
-                    handlerView.x
+            adjustHandlerPosition(handlerView.x, animationsEnabled) {
+                if (setLastPointSelected(currentPoint)) {
+                    isDraggingHandler = false
+                    onPointSelectedStopUpdating?.invoke(lastPointSelected)
+                    onProgressStopChanging?.invoke(effectiveProgress)
                 }
-
-            adjustHandlerPosition(newX, animationsEnabled) {
-                val point =
-                    if (pointQuantity == segmentQuantity) {
-                        segments.indexOfFirst(View::isSelected) + 1
-                    } else {
-                        (effectiveProgress * pointQuantity).roundToInt()
-                    }
-
-                if (setLastPointSelected(point)) onEnd()
             }
         } else {
-            val point = (effectiveProgress * pointQuantity).roundToInt()
-            if (setLastPointSelected(point)) onEnd()
+            if (setLastPointSelected(currentPoint)) onEnd()
         }
     }
 
