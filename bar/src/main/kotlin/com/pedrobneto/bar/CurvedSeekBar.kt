@@ -33,9 +33,14 @@ class CurvedSeekBar : FrameLayout {
     private val segmentLayout = LinearLayout(context)
 
     /**
-     * The view used for the Graph.
+     * The view used for the Bar.
      */
-    private val graphView = GraphView(context)
+    private val barView = BarView(context)
+
+    /**
+     * The view used for the Highlight.
+     */
+    private val highlightView = HighlightView(context)
 
     /**
      * The view used for the Handler.
@@ -106,7 +111,7 @@ class CurvedSeekBar : FrameLayout {
      * The y coordinate of the curve's start.
      */
     private val initialY: Float
-        get() = graphView.measuredHeight.toFloat() - (lineStrokeSize / 2)
+        get() = barView.measuredHeight.toFloat() - (lineStrokeSize / 2)
 
     /**
      * The first x coordinate to anchor the curve to.
@@ -178,7 +183,7 @@ class CurvedSeekBar : FrameLayout {
      * @see absoluteHeight
      */
     private val Float.y: Float
-        get() = (this * graphView.measuredHeight) / absoluteHeight
+        get() = (this * barView.measuredHeight) / absoluteHeight
 
     /**
      * Extension property used to scale the x coordinate up or down according to the
@@ -187,7 +192,7 @@ class CurvedSeekBar : FrameLayout {
      * @see absoluteWidth
      */
     private val Float.x: Float
-        get() = (this * graphView.measuredWidth) / absoluteWidth
+        get() = (this * barView.measuredWidth) / absoluteWidth
     //endregion
 
     //region Color
@@ -398,7 +403,8 @@ class CurvedSeekBar : FrameLayout {
         setupHandler()
 
         addView(segmentLayout)
-        addView(graphView)
+        addView(barView)
+        addView(highlightView)
         addView(handlerView)
         adjustLayout()
     }
@@ -559,11 +565,14 @@ class CurvedSeekBar : FrameLayout {
      * Method to setup the graph's attributes.
      */
     private fun setupGraph() {
-        graphView.layoutParams =
+        barView.layoutParams =
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
                 setMargins(0, offset.roundToInt(), 0, 0)
             }
-        graphView.x = x
+        barView.x = x
+
+        highlightView.layoutParams = barView.layoutParams
+        highlightView.x = barView.x
     }
 
     /**
@@ -725,7 +734,7 @@ class CurvedSeekBar : FrameLayout {
      * with the new progress.
      */
     private fun updateHighlight() {
-        graphView.invalidate()
+        if (highlightEnabled) highlightView.invalidate()
     }
 
     /**
@@ -886,14 +895,53 @@ class CurvedSeekBar : FrameLayout {
     }
 
     /**
-     * Layer that will be used to draw the line and highlight (if chosen).
+     * Layer that will be used to draw the bar.
      */
-    private inner class GraphView(context: Context) : View(context) {
-        private val linePaint = Paint()
-        private val highlightPaint = Paint()
-
+    private inner class BarView(context: Context) : View(context) {
         private val linePath = Path()
+        private val linePaint = Paint().apply { style = Paint.Style.STROKE }
+
+        init {
+            clipChildren = false
+            clipToPadding = false
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+
+        override fun onDraw(canvas: Canvas?) {
+            super.onDraw(canvas)
+            canvas?.drawBar()
+        }
+
+        private fun Canvas.drawBar() {
+            linePaint.color = barColor
+            linePaint.strokeWidth = lineStrokeSize
+
+            linePath.rewind()
+            linePath.moveTo(initialX, initialY)
+
+            var x = 0f
+
+            while (x <= finalX) {
+                val y = getYForX(x)
+                linePath.lineTo(x, y)
+
+                x += 1f
+            }
+
+            linePath.lineTo(finalX, getYForX(finalX))
+            drawPath(linePath, linePaint)
+        }
+    }
+
+    /**
+     * Layer that will be used to draw the highlight (if chosen).
+     */
+    private inner class HighlightView(context: Context) : View(context) {
         private val highlightPath = Path()
+        private val highlightPaint = Paint().apply {
+            strokeWidth = resources.getDimension(R.dimen.default_highlight_stroke_size)
+            style = Paint.Style.FILL
+        }
 
         private val finalHighlightColor: Int
             get() = ColorUtils.setAlphaComponent(
@@ -905,12 +953,6 @@ class CurvedSeekBar : FrameLayout {
             clipChildren = false
             clipToPadding = false
             setBackgroundColor(Color.TRANSPARENT)
-
-            linePaint.style = Paint.Style.STROKE
-
-            highlightPaint.style = Paint.Style.FILL
-            highlightPaint.strokeWidth =
-                resources.getDimension(R.dimen.default_highlight_stroke_size)
         }
 
         override fun onDraw(canvas: Canvas?) {
@@ -922,19 +964,14 @@ class CurvedSeekBar : FrameLayout {
             val yTo = initialY + (lineStrokeSize / 2)
 
             highlightPaint.color = highlightColor
-            linePaint.color = barColor
-            linePaint.strokeWidth = lineStrokeSize
 
             highlightPath.rewind()
             highlightPath.moveTo(initialX, yTo)
-            linePath.rewind()
-            linePath.moveTo(initialX, initialY)
 
             var x = 0f
             var progress: Float
             val handlerProgressOnLine = (handlerView.x + handlerView.measuredWidth / 2) / finalX
 
-            var lastXWasInsideHighlight = true
             val lastY = getYForX(handlerCenterX)
             val actualProgress = 1f - (lastY / yTo)
             val initialHighlightColor = ColorUtils.setAlphaComponent(
@@ -956,22 +993,19 @@ class CurvedSeekBar : FrameLayout {
                 progress = x / finalX
 
                 val y = getYForX(x)
-                linePath.lineTo(x, y)
 
-                if (highlightEnabled && progress <= handlerProgressOnLine) {
+                if (progress <= handlerProgressOnLine) {
                     highlightPath.lineTo(x, y)
-                } else if (lastXWasInsideHighlight) {
+                } else {
                     highlightPath.lineTo(x, yTo)
                     highlightPath.lineTo(initialX, yTo)
 
-                    lastXWasInsideHighlight = false
+                    break
                 }
 
                 x += 1f
             }
 
-            linePath.lineTo(finalX, getYForX(finalX))
-            drawPath(linePath, linePaint)
             drawPath(highlightPath, highlightPaint)
         }
     }
