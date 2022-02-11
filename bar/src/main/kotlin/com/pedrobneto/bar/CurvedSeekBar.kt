@@ -245,6 +245,12 @@ class CurvedSeekBar : FrameLayout {
     private var pointsColor = Color.YELLOW
 
     /**
+     * Color to be used on the SeekBar's points when are unselected.
+     */
+    @ColorInt
+    private var unselectedPointsColor = Color.DKGRAY
+
+    /**
      * Color to be used on the SeekBar's points.
      */
     @ColorInt
@@ -600,6 +606,11 @@ class CurvedSeekBar : FrameLayout {
         barIndicatorColor = typedArray.getColor(R.styleable.CurvedSeekBar_barColor, barColor)
         pointsColor =
             typedArray.getColor(R.styleable.CurvedSeekBar_barIndicatorPointsColor, barColor)
+        unselectedPointsColor =
+            typedArray.getColor(
+                R.styleable.CurvedSeekBar_barIndicatorUnselectedPointsColor,
+                Color.DKGRAY
+            )
         pointsArrowColor =
             typedArray.getColor(R.styleable.CurvedSeekBar_barIndicatorArrowColor, pointsColor)
         if (typedArray.hasValue(R.styleable.CurvedSeekBar_handlerColor)) {
@@ -1310,7 +1321,7 @@ class CurvedSeekBar : FrameLayout {
             pointsPaint.color = if (indicatorStyleAsLine) {
                 ColorUtils.setAlphaComponent(pointsColor, 77)
             } else {
-                pointsColor
+                ColorUtils.setAlphaComponent(unselectedPointsColor, 77)
             }
             drawPath(pointsPath, pointsPaint)
         }

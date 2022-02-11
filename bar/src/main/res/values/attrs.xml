@@ -38,6 +38,7 @@
         <attr name="barIndicatorEnabled" format="boolean" />
         <attr name="barIndicatorStrokeSize" format="dimension" />
         <attr name="barIndicatorColor" format="color" />
+        <attr name="barIndicatorUnselectedPointsColor" format="color" />
         <!--endregion-->
 
         <!--region Bar PointsIndicator-->
